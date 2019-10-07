@@ -47,7 +47,6 @@
 	// consts
 	const UPDATE_MS = 10;
 	const SMELLY_IMG_SRC = 'images/smelly1.png';
-	const SMELLY_SPEED = 5;		// pixels moved per updatems
 	const CCUT_DIM = 60;		// conduct cut dimensions (just a square)
 
 	// event bindings
@@ -118,7 +117,6 @@
 			case 1: 	play_snd(clipThrow2);	break;
 			case 2: 	play_snd(clipThrow3);	break;
 		}
-
 	}
 
 
@@ -128,9 +126,11 @@
 		var sm_dx = Math.random() < 0.5 ? -1 : 1;	// pick start direction and dx (dx, -1=RtoL, 1=LtoR)
 		var sm_x = sm_dx == -1 ? canvas.width : 0;		// start pos based off dx
 		var sm_y = Math.random() * (canvas.height * 0.65);
+		var sm_speed = Math.ceil(Math.random() * 10);
 		var sm_img = new Image();
 		sm_img.src = SMELLY_IMG_SRC;
-		var smelly = { x: sm_x, y: sm_y, dx: sm_dx, img: sm_img }
+		
+		var smelly = { x: sm_x, y: sm_y, dx: sm_dx, speed: sm_speed, img: sm_img }
 		smellies.push(smelly);	// sirrr, stop pushing me
 		totSmellies++;
 
@@ -142,7 +142,7 @@
 		if (smellies.length > 0)
 		{
 			smellies.forEach( smelly => {
-				smelly.x += smelly.dx * SMELLY_SPEED;		// todo: randomize speed
+				smelly.x += smelly.dx * smelly.speed;
 				ctx.drawImage(smelly.img, smelly.x, smelly.y);
 				var escaped = false;
 				// now see if smelly goes off screen, then delete if so
