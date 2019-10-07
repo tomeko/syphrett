@@ -61,7 +61,7 @@
 	var startTime = null;
 	var ccuts = [];
 	var smellies = [];
-	var dedSmellies = 0, escapedSmellies = 0, totSmellies = 0;
+	var shotSmellies = 0, escapedSmellies = 0, totSmellies = 0;
 	var ccut_cnt = 0;
 
 
@@ -207,12 +207,12 @@
 		ctx.fillText("Smellies", xpos, ypos);
 		ctx.font = `${fontsize-4}px sans-serif`;
 		ypos += yx;
-		ctx.fillText(`Ded: ${dedSmellies}`, xpos, ypos);
+		ctx.fillText(`Disciplined: ${shotSmellies}`, xpos, ypos);
 		ypos += yx;
 		ctx.fillText(`Escaped: ${escapedSmellies}`, xpos, ypos);
 		ypos += yx;
 		if (ccut_cnt > 0)
-			ctx.fillText(`Hit Rate: ${Number(dedSmellies/ccut_cnt * 100).toFixed(1)}%`, xpos, ypos);
+			ctx.fillText(`Hit Rate: ${Number(shotSmellies/ccut_cnt * 100).toFixed(1)}%`, xpos, ypos);
 
 	}
 
@@ -236,7 +236,7 @@
 	{
 		delete_item(smelly, smellies);
 		play_snd(clipCCut);
-		dedSmellies++;
+		shotSmellies++;
 
 	}
 
