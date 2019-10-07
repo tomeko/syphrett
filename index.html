@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" name='viewport' content='user-scalable=0' />
+    <title>Coach Syphrett's Conduct Cut Blast</title>
+    <style>
+    	* { padding: 0; margin: 0; }
+    	canvas { background: #fcfcfc; display: block; margin: 0 auto; }
+    </style>
+    <script src="js/midi.min.js"></script>
+</head>
+<body>
+
+<canvas id="mainCanvas"></canvas>
+
+<script>
+	// load canvas
+	var canvas = document.getElementById("mainCanvas");
+	mainCanvas.width = window.innerWidth * 0.8;
+	mainCanvas.height = window.innerHeight *  0.8;
+	var ctx = canvas.getContext("2d");
+	
+	// load audio and images
+	var clipThrow = document.createElement("audio");
+	clipThrow.src = "audio/throw.mp3";
+	var clipCCut = document.createElement("audio");
+	clipCCut.src = "audio/ccut.mp3";
+	var clipTaunt1 = document.createElement("audio");
+	clipTaunt1.src = "audio/pball.mp3"
+	var clipTaunt2 = document.createElement("audio");
+	clipTaunt2.src = "audio/2min.mp3"
+
+	const sy_portrait = new Image();
+	const sy_arm1 = new Image();
+	const sy_arm2 = new Image();
+	sy_arm1.src = 'images/hand1.png'
+	sy_arm2.src = 'images/hand2.png'
+	sy_portrait.src = 'images/coachs.png'
+
+	var sy_arm = new Image();		// main arm image holder (since we animate it)
+	sy_arm.src = sy_arm1.src;
+	
+	// consts
+	const UPDATE_MS = 10;
+	const SMELLY_IMG_SRC = 'images/smelly1.png';
+	const SMELLY_SPEED = 5;		// pixels moved per updatems
+	const CCUT_DIM = 60;		// conduct cut dimensions (just a square)
+
+	// event bindings
+	document.addEventListener("mousemove", mouseMoveHandler, false);
+	document.addEventListener("click", mouseClickHandler, false);
+	window.onload = function () { introscreen(); }
+
+	// gameplay vars
+	var armX = (canvas.width - sy_arm.width) / 2;	
+	var midi;
+	var firstClick = true, clicked = false;
+	var startTime = null;
+	var ccuts = [];
+	var smellies = [];
+	var dedSmellies = 0, escapedSmellies = 0, totSmellies = 0;
+	var ccut_cnt = 0;
+
+
+	function introscreen()
+	{
+		var y = canvas.height / 2;
+		ctx.clearRect(0, 0, canvas.width - 100, canvas.height);
+		ctx.drawImage(sy_portrait, canvas.width/2 - 150, 40, canvas.height/3, canvas.height/3);
+		ctx.font = '48px sans-serif'
+		ctx.fillText("Coach Syphrett's", canvas.width/2 - 150, y);
+		y += 50;
+		ctx.fillText("Conduct Cut Bonanza", canvas.width/2 - 220, y);
+		y += 30;
+		ctx.font = '24px sans-serif'
+		ctx.fillText("(Tap to begin)", canvas.width/2 - 100, y);
+
+	}
+
+	// main draw loop
+	function draw(time) {
+	    ctx.clearRect(0, 0, canvas.width, canvas.height);		// clear canvas
+	    
+	    var rand = Math.floor(Math.random() * 200);
+
+	    if (rand == 5)		// create a smelly randomly
+	    	create_smelly();
+
+	    if (clicked)	// throw a conduct cut
+	    {
+	    	clicked = false;
+	    	var ccut = { x: armX, y: canvas.height-sy_arm.height};
+	    	play_snd(clipThrow);
+	    	ccuts.push(ccut);
+	    	ccut_cnt++;
+	    }
+
+	    // animate all objects
+	    ctx.drawImage(sy_arm, armX,canvas.height-sy_arm.height);
+	    anim_smellies();
+	    anim_ccuts();
+	    draw_score();
+
+	    // check for conduct cut collisions
+	    check_smelly_coll();
+	}
+
+
+	// create a smelly
+	function create_smelly()
+	{
+		var sm_dx = Math.random() < 0.5 ? -1 : 1;	// pick start direction and dx (dx, -1=RtoL, 1=LtoR)
+		var sm_x = sm_dx == -1 ? canvas.width : 0;		// start pos based off dx
+		var sm_y = Math.random() * (canvas.height * 0.65);
+		var sm_img = new Image();
+		sm_img.src = SMELLY_IMG_SRC;
+		var smelly = { x: sm_x, y: sm_y, dx: sm_dx, img: sm_img }
+		smellies.push(smelly);	// sirrr, stop pushing me
+		totSmellies++;
+
+	}
+
+	// animate smellies
+	function anim_smellies()
+	{
+		if (smellies.length > 0)
+		{
+			smellies.forEach( smelly => {
+				smelly.x += smelly.dx * SMELLY_SPEED;		// todo: randomize speed
+				ctx.drawImage(smelly.img, smelly.x, smelly.y);
+				var escaped = false;
+				// now see if smelly goes off screen, then delete if so
+				if ((smelly.dx == -1 && smelly.x < 0) || (smelly.dx == 1 && smelly.x >= canvas.width - 70)) 
+				{
+					delete_item(smelly, smellies);
+					escapedSmellies++;
+					if (escapedSmellies % 3 == 0)
+						taunt();
+				}
+
+			});
+		}
+	}
+
+	// check for smelly conduct cut collisions
+	function check_smelly_coll()
+	{
+		smellies.forEach( smelly => {
+			ccuts.forEach( ccut => {
+				if (Math.abs(smelly.x - ccut.x) <= CCUT_DIM && Math.abs(smelly.y - ccut.y) <= CCUT_DIM)
+					destroy_smelly(smelly);
+			});
+		});
+	}
+
+	// animate conduct cuts
+	function anim_ccuts()
+	{
+		if (ccuts.length > 0)
+		{
+			ccuts.forEach( ccut => {
+				ccut.y -= 10;				// animate y pos
+				draw_cc(ccut)				// update drawing
+				if (ccut.y < 0)			// if off screen...
+					delete_item(ccut, ccuts);		// ...delete conduct cut from array
+			});
+		}
+	}
+
+	// draw conduct cut (since it's a path/shape put in own func to not clutter anim_ccuts func)
+	function draw_cc(cc)
+	{
+		ctx.beginPath();
+		ctx.rect(cc.x, cc.y, CCUT_DIM, CCUT_DIM);
+		ctx.fillStyle = "#f7e4ad";
+		ctx.fill();
+		ctx.closePath();
+	}
+
+	// update score
+	function draw_score()
+	{
+		var fontsize = 24;
+		var xpos = canvas.width-200;
+		var yx = fontsize + 2;
+		var ypos = yx;
+		ctx.fillStyle = "#000";
+		ctx.font = `bold ${fontsize}px sans-serif`;
+		ctx.fillText("Smellies", xpos, ypos);
+		ctx.font = `${fontsize-4}px sans-serif`;
+		ypos += yx;
+		ctx.fillText(`Ded: ${dedSmellies}`, xpos, ypos);
+		ypos += yx;
+		ctx.fillText(`Escaped: ${escapedSmellies}`, xpos, ypos);
+		ypos += yx;
+		if (totSmellies > 0)
+			ctx.fillText(`Hit Rate: ${Number(dedSmellies/totSmellies * 100).toFixed(1)}%`, xpos, ypos);
+
+	}
+
+	// play a random taunt sound
+	function taunt()
+	{
+		if (Math.random() < 0.5)
+			play_snd(clipTaunt1);
+		else 
+			play_snd(clipTaunt2);
+	}
+
+	// play sound (allows overlapping)
+	function play_snd(clip)
+	{
+		const cloned = clip.cloneNode();
+		cloned.play()
+	}
+
+	function destroy_smelly(smelly)
+	{
+		delete_item(smelly, smellies);
+		play_snd(clipCCut);
+		dedSmellies++;
+
+	}
+
+	// utility func, delete item from array arr
+	function delete_item(item, arr)
+	{
+		var idx = arr.indexOf(item);
+		if (idx !== -1) arr.splice(idx, 1);
+	}
+
+	// for in browser to animate hand x movement
+	function mouseMoveHandler(e) {
+	    var relativeX = e.clientX - canvas.offsetLeft;
+	    if(relativeX > 0 && relativeX < canvas.width) {
+	        armX = relativeX - sy_arm.width/2;
+	    }
+	}
+
+	function mouseClickHandler(e) {
+	    if (firstClick) {
+	    	firstClick = !firstClick;
+	    	midi = new MidiPlayer('audio/song2.mid', 'mainCanvas');		// play midi file
+	    	midi.play();
+	    	setInterval(draw, UPDATE_MS);		// start main draw loop
+	    } else 
+	    	clicked = true;	
+	}
+
+</script>
+
+</body>
+</html>
