@@ -21,8 +21,12 @@
 	var ctx = canvas.getContext("2d");
 	
 	// load audio and images
-	var clipThrow = document.createElement("audio");
-	clipThrow.src = "audio/throw.mp3";
+	var clipThrow1 = document.createElement("audio");
+	clipThrow1.src = "audio/throw1.mp3";
+	var clipThrow2 = document.createElement("audio");
+	clipThrow2.src = "audio/throw2.mp3";
+	var clipThrow3 = document.createElement("audio");
+	clipThrow3.src = "audio/throw3.mp3";
 	var clipCCut = document.createElement("audio");
 	clipCCut.src = "audio/ccut.mp3";
 	var clipTaunt1 = document.createElement("audio");
@@ -90,7 +94,7 @@
 	    {
 	    	clicked = false;
 	    	var ccut = { x: armX, y: canvas.height-sy_arm.height};
-	    	play_snd(clipThrow);
+	    	play_throwsound();
 	    	ccuts.push(ccut);
 	    	ccut_cnt++;
 	    }
@@ -103,6 +107,18 @@
 
 	    // check for conduct cut collisions
 	    check_smelly_coll();
+	}
+
+	// play a random throw sound
+	function play_throwsound()
+	{	
+		switch (Math.floor(Math.random() * 3))
+		{
+			case 0: 	play_snd(clipThrow1);	break;
+			case 1: 	play_snd(clipThrow2);	break;
+			case 2: 	play_snd(clipThrow3);	break;
+		}
+
 	}
 
 
@@ -147,8 +163,10 @@
 	{
 		smellies.forEach( smelly => {
 			ccuts.forEach( ccut => {
-				if (Math.abs(smelly.x - ccut.x) <= CCUT_DIM && Math.abs(smelly.y - ccut.y) <= CCUT_DIM)
-					destroy_smelly(smelly);
+				if (Math.abs(smelly.x - ccut.x) <= CCUT_DIM && Math.abs(smelly.y - ccut.y) <= CCUT_DIM){
+					destroy_smelly(smelly);		// this also plays a sound
+					delete_item(ccut, ccuts);	// this just deletes the conduct cut (so it doesn't continue flying)
+				}
 			});
 		});
 	}
@@ -193,8 +211,8 @@
 		ypos += yx;
 		ctx.fillText(`Escaped: ${escapedSmellies}`, xpos, ypos);
 		ypos += yx;
-		if (totSmellies > 0)
-			ctx.fillText(`Hit Rate: ${Number(dedSmellies/totSmellies * 100).toFixed(1)}%`, xpos, ypos);
+		if (ccut_cnt > 0)
+			ctx.fillText(`Hit Rate: ${Number(dedSmellies/ccut_cnt * 100).toFixed(1)}%`, xpos, ypos);
 
 	}
 
@@ -240,7 +258,7 @@
 	function mouseClickHandler(e) {
 	    if (firstClick) {
 	    	firstClick = !firstClick;
-	    	midi = new MidiPlayer('audio/song2.mid', 'mainCanvas');		// play midi file
+	    	midi = new MidiPlayer('audio/song2.mid', 'mainCanvas', true, 0);		// play midi file
 	    	midi.play();
 	    	setInterval(draw, UPDATE_MS);		// start main draw loop
 	    } else 
